@@ -1,184 +1,208 @@
 import streamlit as st
 import pandas as pd
-import streamlit.components.v1 as components
+import plotly.express as px
 import streamlit_chat
+import hashlib
+import base64
+import json
+import time
 
-# Page config
+# --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="H&H Luxury Hostels India",
+    page_title="H&H Luxury Hotels India",
     page_icon="🏨",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# H&H Luxury CSS + Images
+# --- H&H LUXURY STYLING ---
 st.markdown("""
 <style>
-    .main-header { background: linear-gradient(135deg, #ffd700, #ffed4e); padding: 3rem; border-radius: 25px; text-align: center; color: #1a1a1a; font-weight: bold; box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
-    .hero-bg { background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1571896349842-33c89424de2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') center/cover; padding: 4rem; border-radius: 25px; color: white; text-align: center; }
-    .hotel-card { background: white; border-radius: 20px; padding: 1.5rem; box-shadow: 0 15px 35px rgba(0,0,0,0.1); border-left: 5px solid #ffd700; margin-bottom: 1.5rem; }
-    .hotel-card:hover { transform: translateY(-5px); box-shadow: 0 25px 50px rgba(0,0,0,0.15); }
-    .price-tag { background: linear-gradient(135deg, #00d4aa, #00b894); color: white; padding: 0.75rem 1.5rem; border-radius: 30px; font-weight: bold; font-size: 1.3rem; }
-    .hhluxury-btn { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #1a1a1a !important; border: none; padding: 15px 30px; border-radius: 30px; font-weight: bold; }
-    .chatbot-container { background: linear-gradient(135deg, #f8f9fa, white); border-radius: 20px; padding: 2rem; border: 2px solid #ffd700; }
+    .main-header {
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        padding: 2.5rem;
+        border-radius: 20px;
+        text-align: center;
+        color: #1a1a1a;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+    }
+    .hero-bg {
+        background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.4)), 
+        url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80') center/cover;
+        padding: 5rem 2rem;
+        border-radius: 25px;
+        color: white;
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+    .hotel-card {
+        background: white;
+        border-radius: 15px;
+        padding: 1.2rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        border-left: 5px solid #ffd700;
+        margin-bottom: 1rem;
+    }
+    .stButton>button {
+        width: 100%;
+        background: linear-gradient(135deg, #5f259f, #7b33cc) !important;
+        color: white !important;
+        border-radius: 25px !important;
+        border: none !important;
+        font-weight: bold !important;
+    }
+    .phonepe-text {
+        color: #5f259f;
+        font-weight: bold;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# 25 REAL HOTELS with Google Maps Images
-hotels_data = pd.DataFrame([
-    {"id": 1, "name": "Zostel Goa Anjuna", "location": "Anjuna Beach, Goa", "region": "Goa", "price": 3200, "rating": 4.6, 
-     "image": "https://lh5.googleusercontent.com/p/AF1QipM8zZostelGoa=w400-h300", "features": "Beachfront, Pool"},
-    {"id": 2, "name": "The Hosteller Manali", "location": "Old Manali, HP", "region": "Himachal Pradesh", "price": 3800, "rating": 4.7,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipTheHostellerManali=w400-h300", "features": "Mountain View, Bonfire"},
-    {"id": 3, "name": "Moustache Rishikesh", "location": "Tapovan, Rishikesh", "region": "Uttarakhand", "price": 2900, "rating": 4.5,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipMoustacheRishikesh=w400-h300", "features": "Ganga View, Yoga"},
-    {"id": 4, "name": "Zostel Mumbai Bandra", "location": "Bandra West, Mumbai", "region": "Maharashtra", "price": 4200, "rating": 4.4,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelMumbai=w400-h300", "features": "Rooftop, Urban"},
-    {"id": 5, "name": "The Hosteller Jaipur", "location": "Civil Lines, Jaipur", "region": "Rajasthan", "price": 3100, "rating": 4.6,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipHostellerJaipur=w400-h300", "features": "Heritage, Café"},
-    {"id": 6, "name": "Zostel Fort Kochi", "location": "Fort Kochi, Kerala", "region": "Kerala", "price": 3400, "rating": 4.5,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelKochi=w400-h300", "features": "Heritage, Beach"},
-    {"id": 7, "name": "The Hosteller Spiti Kaza", "location": "Kaza, Spiti Valley", "region": "Himachal Pradesh", "price": 4500, "rating": 4.8,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipSpitiHosteller=w400-h300", "features": "High Altitude, Views"},
-    {"id": 8, "name": "Zostel Gokarna Om Beach", "location": "Om Beach, Gokarna", "region": "Karnataka", "price": 2800, "rating": 4.4,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelGokarna=w400-h300", "features": "Beachfront, Surfing"},
-    {"id": 9, "name": "Moustache Hostel Kasol", "location": "Parvati Valley, Kasol", "region": "Himachal Pradesh", "price": 2700, "rating": 4.3,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipMoustacheKasol=w400-h300", "features": "River Side, Café"},
-    {"id": 10, "name": "The Hosteller McLeodganj", "location": "McLeod Ganj, Dharamshala", "region": "Himachal Pradesh", "price": 3600, "rating": 4.6,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipMcLeodHosteller=w400-h300", "features": "Tibetan, Tours"},
-    {"id": 11, "name": "Zostel Jaisalmer", "location": "Jaisalmer, Rajasthan", "region": "Rajasthan", "price": 2900, "rating": 4.4,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelJaisalmer=w400-h300", "features": "Desert, Camel Safari"},
-    {"id": 12, "name": "The Hosteller Hampi", "location": "Hampi, Karnataka", "region": "Karnataka", "price": 2600, "rating": 4.5,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipHostellerHampi=w400-h300", "features": "UNESCO, Rock Climbing"},
-    {"id": 13, "name": "Zostel Leh Ladakh", "location": "Changspa, Leh", "region": "Ladakh", "price": 4800, "rating": 4.6,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelLeh=w400-h300", "features": "High Altitude, Tours"},
-    {"id": 14, "name": "The Hosteller Pondicherry", "location": "White Town, Puducherry", "region": "Pondicherry", "price": 3700, "rating": 4.5,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipPondicherryHosteller=w400-h300", "features": "French Quarter, Beach"},
-    {"id": 15, "name": "Zostel Varanasi Assi Ghat", "location": "Assi Ghat, Varanasi", "region": "Uttar Pradesh", "price": 2500, "rating": 4.3,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelVaranasi=w400-h300", "features": "Ganges Front, Spiritual"},
-    {"id": 16, "name": "The Hosteller Udaipur", "location": "Lake Palace Rd, Udaipur", "region": "Rajasthan", "price": 3900, "rating": 4.6,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipHostellerUdaipur=w400-h300", "features": "Lake Pichola, Heritage"},
-    {"id": 17, "name": "Zostel Pushkar", "location": "Brahma Temple Rd, Pushkar", "region": "Rajasthan", "price": 2700, "rating": 4.4,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelPushkar=w400-h300", "features": "Holy Lake, Camel Fair"},
-    {"id": 18, "name": "The Hosteller Coorg", "location": "Madikeri, Coorg", "region": "Karnataka", "price": 3400, "rating": 4.5,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipCoorgHosteller=w400-h300", "features": "Coffee Plantation, Homestay"},
-    {"id": 19, "name": "Zostel Ranthambore", "location": "Sawai Madhopur, Rajasthan", "region": "Rajasthan", "price": 4100, "rating": 4.5,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipZostelRanthambore=w400-h300", "features": "Tiger Safari, Jungle"},
-    {"id": 20, "name": "The Hosteller Andaman", "location": "Havelock Island", "region": "Andaman", "price": 5800, "rating": 4.7,
-     "image": "https://lh5.googleusercontent.com/p/AF1QipAndamanHosteller=w400-h300", "features": "Island, Scuba Diving"},
-    {"id": 21, "name": "H&H Luxury Signature Goa", "location": "Baga Beach, Goa", "region": "Goa", "price": 4500, "rating": 5.0,
-     "image": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400&h=300", "features": "Signature Collection"},
-    {"id": 22, "name": "H&H Premium Manali", "location": "Solang Valley, Manali", "region": "Himachal Pradesh", "price": 5200, "rating": 4.9,
-     "image": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=400&h=300", "features": "H&H Exclusive"},
-    {"id": 23, "name": "H&H Royal Jaipur", "location": "Amer Fort Rd, Jaipur", "region": "Rajasthan", "price": 4800, "rating": 4.9,
-     "image": "https://images.unsplash.com/photo-1571883928745-f86d233dd7e9?w=400&h=300", "features": "Royal Heritage"},
-    {"id": 24, "name": "H&H Beachside Kerala", "location": "Varkala Beach, Kerala", "region": "Kerala", "price": 4200, "rating": 4.8,
-     "image": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400&h=300", "features": "Cliffside Luxury"},
-    {"id": 25, "name": "H&H Himalayan Spiti", "location": "Tabo Monastery, Spiti", "region": "Himachal Pradesh", "price": 6100, "rating": 5.0,
-     "image": "https://images.unsplash.com/photo-1634199545475-b3c9d2a9a8e8?w=400&h=300", "features": "Monastery Luxury"}
-])
+# --- PHONEPE INTEGRATION LOGIC ---
+def initiate_phonepe_payment(amount, user_details):
+    """
+    Simulates the PhonePe payment gateway flow.
+    In production, this would hit your backend to generate the X-VERIFY checksum.
+    """
+    merchant_id = "PGCHECKOUT" # Replace with your real Merchant ID
+    salt_key = "099eb1a5-e509-480a-99df-2bbf32293b34" # Replace with real Salt Key
+    
+    st.toast("Connecting to PhonePe Secure Servers...", icon="🔒")
+    time.sleep(1.5)
+    
+    # Simulate Redirect to PhonePe Gateway
+    st.success(f"Redirecting to PhonePe for ₹{amount:,}...")
+    components.html(f"""
+        <script>
+            setTimeout(function() {{
+                window.open("https://merchants.phonepe.com/", "_blank");
+            }}, 1000);
+        </script>
+    """, height=0)
+    return True
 
-# Chatbot Brain
-chat_responses = {
-    "hello": "👋 Welcome to H&H Luxury Hostels! Ask about Goa, Manali, PhonePe, or bookings!",
-    "goa": "🏖️ **Goa**: Zostel Anjuna (₹3200) - Beachfront 4.6⭐. 5 others available!",
-    "manali": "🏔️ **Manali**: The Hosteller Old Manali (₹3800) - 4.7⭐ Mountain views!",
-    "phonepe": "💳 **PhonePe Test**: success@phonepe (PIN:1234). Secure UPI/Cards!",
-    "book": "📅 **Booking**: Browse → Select → PhonePe → Confirmed! support@H&HLuxury.com",
-    "price": "💰 **Range**: ₹2500-₹6100. Filter by budget on Browse page.",
-    "login": "👤 **Demo**: user@example.com / 123456. Profile tab → Login.",
-    "h&h": "👑 **H&H Luxury**: Premium 5-star collection across India!"
-}
+# --- DATA LOADING ---
+@st.cache_data
+def get_hotel_data():
+    return pd.DataFrame([
+        {"id": 1, "name": "H&H Signature Goa", "location": "North Goa", "region": "Goa", "price": 8500, "rating": 5.0, "img": "https://images.unsplash.com/photo-1571896349842-33c89424de2d?w=400"},
+        {"id": 2, "name": "The Grand Manali", "location": "Old Manali", "region": "Himachal Pradesh", "price": 6200, "rating": 4.8, "img": "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=400"},
+        {"id": 3, "name": "Royal Palace Jaipur", "location": "Civil Lines", "region": "Rajasthan", "price": 7500, "rating": 4.9, "img": "https://images.unsplash.com/photo-1571883928745-f86d233dd7e9?w=400"},
+        {"id": 4, "name": "Varanasi Heritage Hotel", "location": "Assi Ghat", "region": "Uttar Pradesh", "price": 4500, "rating": 4.7, "img": "https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=400"}
+    ])
 
-def get_chat_response(message):
-    msg = message.lower()
-    for key, response in chat_responses.items():
-        if key in msg:
-            return response
-    return "Great question! Browse 25 verified luxury hostels or ask about destinations! 📍"
+# --- SIDEBAR NAV ---
+st.sidebar.title("👑 H&H Luxury Hotels")
+page = st.sidebar.radio("Navigation", ["🏠 Home", "🛏️ Hotels", "💳 Booking", "🤖 AI Assistant"])
 
-# Session state
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+# --- SHARED HEADER ---
+st.markdown("<div class='main-header'><h1>👑 H&H Luxury Hotels India</h1><p>Verified 5-Star Stays • support@H&HLuxury.com</p></div>", unsafe_allow_html=True)
 
-# Sidebar
-st.sidebar.title("👑 H&H Luxury")
-page = st.sidebar.radio("Go To", ["🏠 Home", "🛏️ Browse", "🔍 Search", "💳 Book", "👤 Profile", "🤖 Chat"])
+hotels_df = get_hotel_data()
 
-# Header
-st.markdown("<div class='main-header'><h1>👑 H&H Luxury Hostels India</h1><p>25 Verified 5-Star Hostels | PhonePe | support@H&HLuxury.com</p></div>", unsafe_allow_html=True)
-
-# Pages
+# --- PAGES ---
 if page == "🏠 Home":
-    st.markdown("<div class='hero-bg'><h1 style='font-size:4rem;'>India's Finest Luxury Hostels</h1><p style='font-size:1.5rem;'>25 Verified Properties</p></div>", unsafe_allow_html=True)
+    st.markdown("""
+        <div class='hero-bg'>
+            <h1 style='font-size: 3.5rem;'>Experience Pure Luxury</h1>
+            <p style='font-size: 1.2rem;'>India's most exclusive hotels, now bookable via PhonePe.</p>
+        </div>
+    """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns(3)
-    with col1: st.metric("Hotels", len(hotels_data), "↗️")
-    with col2: st.metric("Avg Rating", f"{hotels_data['rating'].mean():.1f}⭐", "↗️")
-    with col3: st.metric("From", f"₹{hotels_data['price'].min():,}", "↗️")
+    st.subheader("🌟 Featured Properties")
+    cols = st.columns(len(hotels_df))
+    for i, row in hotels_df.iterrows():
+        with cols[i]:
+            st.image(row['img'], use_container_width=True)
+            st.markdown(f"**{row['name']}**")
+            st.caption(f"{row['region']} • ⭐{row['rating']}")
 
-elif page == "🛏️ Browse":
-    # Filters
-    col1, col2, col3 = st.columns(3)
-    with col1: region = st.selectbox("Region", ["All"] + sorted(hotels_data['region'].unique()))
-    with col2: min_price = st.slider("Min Price", 2000, 8000, 2500)
-    with col3: min_rating = st.slider("Min Rating", 4.0, 5.0, 4.3)
+elif page == "🛏️ Hotels":
+    st.subheader("Explore our Hotel Collection")
+    region_filter = st.multiselect("Filter by Region", hotels_df['region'].unique())
     
-    # Filter
-    filtered = hotels_data[(hotels_data['price'] >= min_price) & (hotels_data['rating'] >= min_rating)]
-    if region != "All":
-        filtered = filtered[filtered['region'] == region]
-    
-    st.markdown(f"### Found {len(filtered)} Luxury Hostels")
-    
-    # Hotel Cards with IMAGES
-    for _, hotel in filtered.iterrows():
-        col1, col2 = st.columns([2, 1])
-        with col1:
-            st.markdown(f"""
-            <div class='hotel-card'>
-                <div style='display:flex; gap:1rem;'>
-                    <img src='{hotel['image']}' width='100' height='80' style='border-radius:10px; object-fit:cover;'>
-                    <div>
-                        <h3>{hotel['name']}</h3>
-                        <p style='color:#666; margin:0.2rem 0;'>{hotel['location']}</p>
-                        <p><small>{hotel['features']}</small></p>
-                    </div>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        with col2:
-            st.markdown(f"""
-            <div style='text-align:center;'>
-                <div class='price-tag'>₹{hotel['price']:,}</div>
-                <div style='color:gold; font-size:1.3rem;'>⭐{hotel['rating']}</div>
-                <button class='hhluxury-btn'>Book</button>
-            </div>
-            """, unsafe_allow_html=True)
-
-elif page == "🤖 Chat":
-    st.markdown("<div class='chatbot-container'><h2>🤖 H&H Luxury Assistant</h2></div>", unsafe_allow_html=True)
-    
-    # Chat display
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-    
-    # Chat input
-    if prompt := st.chat_input("Ask about hotels, PhonePe, bookings..."):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
+    display_df = hotels_df
+    if region_filter:
+        display_df = hotels_df[hotels_df['region'].isin(region_filter)]
         
-        response = get_chat_response(prompt)
-        st.session_state.messages.append({"role": "assistant", "content": response})
-        with st.chat_message("assistant"):
-            st.markdown(response)
+    for _, hotel in display_df.iterrows():
+        with st.container():
+            col1, col2, col3 = st.columns([1, 2, 1])
+            col1.image(hotel['img'], use_container_width=True)
+            with col2:
+                st.markdown(f"### {hotel['name']}")
+                st.write(f"📍 {hotel['location']}, {hotel['region']}")
+                st.write("✅ 5-Star Amenities • Free WiFi • Breakfast Included")
+            with col3:
+                st.markdown(f"<h2 style='color:#00b894;'>₹{hotel['price']:,}</h2>", unsafe_allow_html=True)
+                if st.button(f"Select {hotel['id']}", key=f"btn_{hotel['id']}"):
+                    st.session_state.selected_hotel = hotel['name']
+                    st.session_state.total_price = hotel['price']
+                    st.toast(f"Selected {hotel['name']}")
 
-# Footer
-st.markdown("""
-<div style='text-align:center; padding:2rem; color:white; background:linear-gradient(135deg,#1a1a1a,#2d2d2d); border-radius:20px;'>
-    <h3>👑 H&H Luxury Hostels India</h3>
-    <p>support@H&HLuxury.com</p>
-</div>
-""", unsafe_allow_html=True)
+elif page == "💳 Booking":
+    st.subheader("💳 Secure Checkout")
+    
+    if 'selected_hotel' not in st.session_state:
+        st.warning("Please select a hotel from the 'Hotels' tab first.")
+    else:
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            with st.form("booking_form"):
+                st.markdown(f"**Booking for:** {st.session_state.selected_hotel}")
+                guest_name = st.text_input("Full Name")
+                email = st.text_input("Email Address")
+                phone = st.text_input("Mobile Number")
+                nights = st.number_input("Number of Nights", min_value=1, value=1)
+                
+                total = st.session_state.total_price * nights
+                
+                st.markdown("---")
+                st.markdown(f"### Total Payable: ₹{total:,}")
+                
+                pay_btn = st.form_submit_button("🚀 Pay with PhonePe")
+                
+                if pay_btn:
+                    if not guest_name or not phone:
+                        st.error("Please fill in all details.")
+                    else:
+                        initiate_phonepe_payment(total, {"name": guest_name, "email": email})
+
+        with col2:
+            st.markdown("""
+                <div style='background:#f1f2f6; padding:1.5rem; border-radius:15px; border: 1px solid #5f259f;'>
+                    <h4 class='phonepe-text'>Why PhonePe?</h4>
+                    <ul style='font-size:0.9rem;'>
+                        <li>Instant Payment Confirmation</li>
+                        <li>Zero Transaction Fees for UPI</li>
+                        <li>Safe & Encrypted (PCI-DSS)</li>
+                    </ul>
+                </div>
+            """, unsafe_allow_html=True)
+
+elif page == "🤖 AI Assistant":
+    st.subheader("🤖 H&H Support Bot")
+    
+    if "messages" not in st.session_state:
+        st.session_state.messages = [{"role": "assistant", "content": "Hello! I am your H&H Luxury Assistant. How can I help you with your hotel booking today?"}]
+
+    for msg in st.session_state.messages:
+        st.chat_message(msg["role"]).write(msg["content"])
+
+    if prompt := st.chat_input():
+        st.session_state.messages.append({"role": "user", "content": prompt})
+        st.chat_message("user").write(prompt)
+        
+        # Simple Logic
+        response = "I can help you find hotels in Goa or Manali. You can pay securely via PhonePe in the Booking tab!"
+        if "goa" in prompt.lower(): response = "We have 5 exclusive properties in Goa starting from ₹8,500."
+        if "pay" in prompt.lower() or "phonepe" in prompt.lower(): response = "We accept all UPI, Cards, and Netbanking via PhonePe for instant confirmation."
+        
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        st.chat_message("assistant").write(response)
+
+# --- FOOTER ---
+st.markdown("---")
+st.markdown("<div style='text-align:center; color:#666;'>© 2024 H&H Luxury Hotels India | <a href='mailto:support@H&HLuxury.com'>support@H&HLuxury.com</a></div>", unsafe_allow_html=True)
