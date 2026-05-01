@@ -76,47 +76,37 @@ with st.sidebar:
         if st.button("💳 Book Now", key="sidebar_booking"):
             go_to_booking()
 
-# --- PAGE CONTENT ---
+# --- SIMPLIFIED HOME PAGE CONTENT ---
 if st.session_state.current_page == "home":
-    # HOME PAGE
+    # MAIN HEADER
     st.markdown("<div class='main-header'><h1>👑 H&H Luxury Hotels India</h1><p>20 Premium Properties | 10 Exquisite Regions</p></div>", unsafe_allow_html=True)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); padding: 3rem; border-radius: 25px; text-align: center; height: 400px; display: flex; flex-direction: column; justify-content: center;">
-            <h2 style="color: #5f259f;">20 Luxury Hotels</h2>
-            <p style="font-size: 1.3rem; color: #666;">Across 10 Beautiful Regions</p>
-            <ul style="text-align: left; font-size: 1.1rem; color: #444;">
-                <li>📍 Goa, Rajasthan, Kerala</li>
-                <li>⭐ All 5-Star Properties</li>
-                <li>💰 ₹5,200 - ₹32,000/night</li>
-            </ul>
-        </div>
-        """, unsafe_allow_html=True)
+    # FULL WIDTH IMAGE
+    st.image("https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=1400&q=80", use_container_width=True)
     
-    with col2:
-        st.image("https://images.unsplash.com/photo-1571896349842-33c89424de2d?auto=format&fit=crop&w=800&q=80", use_column_width=True)
-    
-    # BIG EXPLORE BUTTON WITH CALLBACK
+    # BIG EXPLORE BUTTON (Centered)
     st.markdown("---")
-    col1, col2 = st.columns([1, 3])
-    with col1:
-        st.markdown("<h2 style='color: #5f259f; text-align: center;'>Ready to Explore?</h2>", unsafe_allow_html=True)
-    with col2:
-        if st.button("🚀 Explore Luxury Properties", key="main_explore_btn", on_click=go_to_hotels, use_container_width=True):
-            st.success("🎉 Redirecting to Hotels...")
-
-    st.markdown("### 📞 Contact")
+    st.markdown("<div style='text-align: center; margin: 4rem 0;'>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color: #5f259f;'>Ready to Discover Luxury?</h2>", unsafe_allow_html=True)
+    
+    if st.button("🚀 Explore Luxury Properties", key="main_explore_btn", on_click=go_to_hotels, use_container_width=True):
+        st.success("🎉 Redirecting to Hotels...", icon="🚀")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    # CONTACT INFO (Bottom)
+    st.markdown("---")
+    st.markdown("<h3 style='text-align: center; color: #5f259f;'>📞 Get In Touch</h3>", unsafe_allow_html=True)
     col1, col2, col3 = st.columns(3)
-    with col1: st.info("support@hhluxury.com")
-    with col2: st.info("+91 98765 43210")
-    with col3: st.info("24/7 Support")
+    with col1: 
+        st.info("**support@hhluxury.com**")
+    with col2: 
+        st.info("**+91 98765 43210**")
+    with col3: 
+        st.info("**24/7 Luxury Support**")
 
 elif st.session_state.current_page == "hotels":
-    # AUTO-REDIRECT TO HOTELS PAGE
     st.switch_page("pages/1_Hotels.py")
 
 elif st.session_state.current_page == "booking":
-    # AUTO-REDIRECT TO BOOKING PAGE
     st.switch_page("pages/2_Booking.py")
